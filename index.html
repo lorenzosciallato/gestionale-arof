@@ -208,6 +208,19 @@
         @keyframes pulseAlert { 0% { box-shadow: 0 0 0 0 rgba(255, 118, 117, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 118, 117, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 118, 117, 0); } }
 
         @media (max-width: 1024px) { .container { grid-template-columns: 1fr; } }
+        
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            header { flex-direction: column; gap: 12px; align-items: stretch; text-align: center; }
+            .header-right { justify-content: space-between; width: 100%; margin-top: 5px; flex-wrap: wrap; }
+            .ceremony-content > div[style*="grid-template-columns"], .anniversary-content > div[style*="grid-template-columns"] { display: flex !important; flex-direction: column; gap: 15px; }
+            .transfer-box { flex-direction: column; align-items: stretch; text-align: center; }
+            .transfer-box input, .transfer-box button { width: 100%; margin: 10px 0 0 0; }
+            .ceremony-content > div:last-child { display: flex; flex-direction: column; gap: 10px; }
+            .ceremony-content > div:last-child button { width: 100%; margin: 0; }
+            .calendar-controls { flex-direction: column; gap: 10px; }
+            .calendar-controls select { width: 100%; }
+        }
     </style>
 </head>
 <body>
