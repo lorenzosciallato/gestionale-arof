@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Gestionale Professionale</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #7f8c8d;
+            --bg: #f4f7f6;
+            --bg-overlay: rgba(244, 247, 246, 0.93);
+            --card: #ffffff;
+            --done: #95a5a6;
+            --highlight: #d4af37;
+            --danger: #e74c3c;
+            --success: #27ae60;
+            --warning: #f1c40f; 
+            
+            --rep-mansioni: #e3f2fd;
+            --rep-cerimonie: #f3e5f5;
+            --rep-anniversari: #fff3e0;
+            --rep-note: #e8f5e9;
+        }
+
+        [data-theme="dark"] {
+            --primary: #e0e6ed;
+            --accent: #9ba4b5;
+            --bg: #121212;
+            --bg-overlay: rgba(18, 18, 18, 0.93);
+            --card: #1e1e1e;
+            --done: #5c6b7a;
+            --highlight: #f1c40f;
+            --warning: #d4ac0d;
+            
+            --rep-mansioni: #0d2a42;
+            --rep-cerimonie: #281432;
+            --rep-anniversari: #3e2704;
+            --rep-note: #0f2e14;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background-color: var(--bg); 
+            font-family: 'Inter', sans-serif; 
+            color: var(--primary); 
+            padding: 20px; 
+            transition: background-color 0.3s, color 0.3s; 
+            scroll-behavior: smooth; 
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+        
+        header { grid-column: 1 / -1; padding: 15px 20px; background: var(--card); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s; }
+        .header-right { display: flex; gap: 15px; align-items: center; }
+        
+        #dashboard-counters { font-size: 0.95rem; font-weight: 600; text-align: center; flex: 1; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+        #dashboard-counters span { cursor: pointer; padding: 6px 12px; border-radius: 20px; background: var(--card); border: 1px solid var(--accent); transition: 0.2s; }
+        #dashboard-counters span:hover { filter: brightness(0.9); border-color: var(--highlight); }
+
+        #theme-toggle, #logout-btn { background: transparent; border: 2px solid var(--accent); color: var(--primary); padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; font-family: inherit; transition: 0.3s; }
+        #theme-toggle:hover { background: var(--accent); color: white; }
+        #logout-btn { border-color: var(--danger); color: var(--danger); display: none; }
+        #logout-btn:hover { background: var(--danger); color: white; }
+        
+        #clock { font-size: 1.2rem; font-weight: 600; color: var(--highlight); background: var(--primary); padding: 8px 15px; border-radius: 20px; }
+        h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--primary); text-transform: capitalize; }
+        
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); height: fit-content; margin-bottom: 20px; transition: background-color 0.3s; }
+        .card-accordion { padding: 0; overflow: hidden; }
+
+        .window-controls { display: flex; gap: 8px; font-size: 1.1rem; user-select: none;}
+        .window-controls span { cursor: pointer; font-weight: bold; line-height: 1; transition: 0.2s; padding: 2px 5px; border-radius: 4px;}
+        .window-controls span:hover { background: rgba(0,0,0,0.1); }
+        [data-theme="dark"] .window-controls span:hover { background: rgba(255,255,255,0.1); }
+        .window-minimized { display: none !important; }
+
+        [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: #2a2a2a; color: var(--primary); border-color: #444; }
+        [data-theme="dark"] .acc-header, [data-theme="dark"] .sub-acc-header { background: #2a2a2a; border-color: #444; }
+        [data-theme="dark"] .acc-header:hover, [data-theme="dark"] .sub-acc-header:hover { background: #333; }
+        [data-theme="dark"] .acc-content, [data-theme="dark"] .sub-acc-content { background: #1e1e1e; border-color: #444; }
+        [data-theme="dark"] .report-display { background: #121212; border-color: #444; }
+        [data-theme="dark"] .add-task-btn, [data-theme="dark"] .secondary-btn { background: #2a2a2a; color: var(--accent); border-color: #444; }
+        [data-theme="dark"] .day:hover { background: #333; }
+        [data-theme="dark"] .task-item, [data-theme="dark"] .inner-task-item { border-color: #444; }
+        [data-theme="dark"] .close-day-btn, [data-theme="dark"] .report-nav button { background: #2c3e50; color: #ffffff; border: 1px solid #444; }
+
+        /* Report View */
+        .report-controls { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 10px;}
+        .report-uploader { margin-bottom: 15px; width: 100%; font-size: 0.85rem; padding: 5px; }
+        .report-display { height: 400px; overflow-y: auto; background: #fafbfc; border: 1px solid #ddd; border-radius: 6px; padding: 15px; font-size: 0.85rem; font-family: monospace; color: var(--primary); line-height: 1.5; scroll-behavior: smooth;}
+        .report-nav { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed var(--accent); position: sticky; top: -15px; background: inherit; z-index: 10; padding-top: 10px;}
+        .report-nav button { background: var(--primary); color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; font-weight: bold;}
+        .report-block { padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.05); }
+        .block-mansioni { background-color: var(--rep-mansioni); }
+        .block-cerimonie { background-color: var(--rep-cerimonie); }
+        .block-anniversari { background-color: var(--rep-anniversari); }
+        .block-note { background-color: var(--rep-note); }
+        .rep-salma-title { color: var(--primary); font-size: 0.95rem; display: block; margin-top: 8px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 3px; }
+
+        .transfer-box { background: #e3f2fd; padding: 10px; border-radius: 8px; border: 1px solid #bbdefb; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
+        [data-theme="dark"] .transfer-box { background: #0d2a42; border-color: #154360; }
+        
+        /* Calendar */
+        .calendar-controls { display: flex; justify-content: space-between; margin-bottom: 15px; padding-top: 10px;}
+        select { padding: 8px; border-radius: 5px; border: 1px solid #ddd; font-family: inherit; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .day { padding: 10px 5px; cursor: pointer; border-radius: 5px; transition: 0.2s; font-size: 0.9rem; border: 1px solid transparent; }
+        .day:hover { background: #eee; }
+        .day.selected { background: var(--primary); color: white; font-weight: bold; }
+        .day.today { border: 2px solid var(--highlight); }
+        .day-name { font-weight: bold; font-size: 0.7rem; text-transform: uppercase; color: var(--accent); padding-bottom: 10px; }
+
+        /* Tasks */
+        .task-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; gap: 10px; }
+        .task-text { flex-grow: 1; padding: 5px; border: 1px solid transparent; border-radius: 4px; font-size: 0.95rem; width: 100%; }
+        .task-text:focus { outline: none; border-color: var(--highlight); }
+        [data-theme="light"] .task-text:focus { background: #fffdf0; }
+        .task-text.completed { text-decoration: line-through; color: var(--done); }
+        .check-btn { width: 22px; height: 22px; border-radius: 4px; border: 2px solid var(--primary); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .check-btn.active { background: var(--success); border-color: var(--success); color: white; }
+        .check-btn.active::after { content: '✓'; font-weight: bold; }
+        .add-task-btn, .secondary-btn { width: 100%; padding: 12px; margin: 15px 0 0 0; background: #f8f9fa; border: 2px dashed var(--accent); color: var(--accent); cursor: pointer; border-radius: 8px; font-weight: 600; transition: 0.3s; }
+        .add-task-btn:hover, .secondary-btn:hover { background: #e9ecef; color: var(--primary); border-color: var(--primary); }
+        .secondary-btn { padding: 8px; margin-top: 5px; border-width: 1px; font-size: 0.85rem; border-style: solid; background: var(--card);}
+
+        /* Titles */
+        .editable-title { font-weight: bold; border: none; background: transparent; flex: 1; min-width: 0; outline: none; color: inherit; font-size: 1rem; cursor: text; line-height: 1.3; }
+
+        /* Accordion (General & Side) */
+        .accordion { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 15px; background: var(--card); }
+        .acc-header { background: #f8f9fa; padding: 15px 20px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; border-bottom: 1px solid #ddd; transition: 0.2s;}
+        .acc-header:last-child { border-bottom: none; }
+        .acc-header:hover { filter: brightness(0.95); }
+        .acc-content { padding: 15px; display: none; background: transparent; border-bottom: 1px solid #ddd; max-height: 500px; overflow-y: auto; }
+        .acc-content:last-child { border-bottom: none; }
+
+        .sub-acc-header { background: #f0f2f5; padding: 10px 15px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px; transition: 0.2s; }
+        .sub-acc-content { padding: 10px; display: none; background: #fafbfc; border: 1px solid #ddd; border-top: none; border-radius: 0 0 4px 4px; margin-top: -5px; margin-bottom: 10px; flex-direction: column; gap: 8px;}
+
+        /* --- SALME E ANNIVERSARI --- */
+        .ceremony-item, .anniversary-item { border-radius: 8px; margin-bottom: 15px; overflow: hidden; background: transparent; border: 2px solid transparent;}
+        .ceremony-header, .anniversary-header { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; transition: 0.3s; color: #111; font-size: 1.1rem; border-radius: 8px; background: #f0f2f5;}
+        [data-theme="dark"] .ceremony-header, [data-theme="dark"] .anniversary-header { background: #2a2a2a; color: var(--primary); }
+        .ceremony-content, .anniversary-content { padding: 15px; display: none; background: var(--card); border: 1px solid #ddd; border-top: none; flex-direction: column; gap: 12px; border-radius: 0 0 8px 8px;}
+        .ceremony-open .ceremony-header, .ann-open .anniversary-header { border-radius: 8px 8px 0 0; }
+        
+        .c-status-yellow { background-color: var(--warning) !important; color: #111 !important; }
+        .c-status-green { background-color: var(--success) !important; color: white !important; }
+        .c-strike { text-decoration: line-through; opacity: 0.9; }
+
+        .progress-container { width: 100%; height: 8px; background-color: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+        [data-theme="dark"] .progress-container { background-color: rgba(255,255,255,0.1); }
+        .progress-bar { height: 100%; background-color: var(--success); width: 0%; transition: width 0.3s ease; }
+
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--accent); text-transform: uppercase; }
+        .form-group input[type="text"], .form-group input[type="date"], .form-group input[type="time"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 0.95rem; }
+        .delete-btn { color: white; background: var(--danger); cursor: pointer; font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size:0.8rem;}
+        
+        .inner-task-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px dashed #ddd; }
+        
+        .c-toggle-btn { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 4px 12px; font-size: 0.85rem; font-weight: bold; color: var(--primary); cursor: pointer; transition: 0.2s;}
+        .c-toggle-btn:hover { background: #f0f2f5; }
+        [data-theme="dark"] .c-toggle-btn { background: #333; color: white; border-color: #555; }
+        [data-theme="dark"] .c-toggle-btn:hover { background: #444; }
+
+        /* Anniversari Specifics */
+        .a-dove { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 0.85rem; resize: vertical; min-height: 60px;}
+
+        /* Richieste */
+        .richiesta-item { display: flex; align-items: center; padding: 10px; border-radius: 6px; margin-bottom: 8px; gap: 10px; border: 1px solid rgba(0,0,0,0.1); align-items: flex-start;}
+        .richiesta-item.completed { opacity: 0.6; }
+        .richiesta-item.completed .task-text { text-decoration: line-through; }
+        .actor-btn { padding: 6px 12px; border: none; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 0.8rem; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        /* Note del giorno */
+        .note-item { display: flex; align-items: flex-start; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(0,0,0,0.1); background: #fffef0; }
+        [data-theme="dark"] .note-item { background: #2a2a2a; border-color: #444; }
+        .note-text { flex-grow: 1; border: none; background: transparent; resize: none; overflow: hidden; min-height: 25px; line-height: 1.4; font-family: inherit; font-size: 0.95rem; color: inherit; outline: none; padding: 2px;}
+        .note-text:focus { border-bottom: 1px solid var(--highlight); }
+        
+        .close-day-btn { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .close-day-btn:hover { background: #1a252f; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        
+        .ai-btn { background: #f3e8ff; color: #6b21a8; border: 2px solid #d8b4fe; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: 0.3s; font-size: 0.95rem; display: flex; justify-content: center; align-items: center; gap: 8px;}
+        .ai-btn:hover { background: #e9d5ff; border-color: #c084fc; }
+
+        .banner-alert { background: #ffe5e5; color: #d63031; padding: 15px; border-radius: 8px; border: 2px solid #ff7675; margin-bottom: 20px; font-weight: bold; display: none; align-items: center; gap: 10px; font-size: 1.1rem; animation: pulseAlert 2s infinite; }
+        [data-theme="dark"] .banner-alert { background: #4a0000; color: #ff7675; border-color: #d63031; }
+        @keyframes pulseAlert { 0% { box-shadow: 0 0 0 0 rgba(255, 118, 117, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 118, 117, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 118, 117, 0); } }
+
+        @media (max-width: 1024px) { .container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div id="login-screen" style="position: fixed; top:0; left:0; width:100%; height:100%; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.3s;">
+    <div class="card" style="width: 320px; text-align: center; border: 1px solid #ddd;">
+        <h2 style="margin-bottom: 25px;">Accesso Gestionale</h2>
+        <input type="email" id="email-input" placeholder="La tua Email" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc;">
+        <input type="password" id="password-input" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #ccc;">
+        <button onclick="signIn()" class="close-day-btn" style="width: 100%; margin-bottom: 15px; background:var(--success)">ACCEDI</button>
+        <button onclick="registerUser()" style="width: 100%; padding: 10px; background: transparent; border: 2px solid var(--accent); color: var(--primary); border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s;">CREA NUOVO ACCOUNT</button>
+        <p id="login-error" style="color: var(--danger); margin-top: 15px; font-size: 0.9rem; min-height: 20px; font-weight: bold;"></p>
+    </div>
+</div>
+
+<header>
+    <h1 id="main-title">Caricamento...</h1>
+    <div id="dashboard-counters">Sincronizzazione in corso...</div>
+    <div class="header-right">
+        <button id="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
+        <button id="logout-btn" onclick="signOut()">Esci</button>
+        <div id="clock">00:00:00</div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="side-panel">
+        
+        <div class="card" style="padding: 15px;">
+            <div class="report-controls" style="padding-bottom: 5px; margin-bottom: 5px; border-bottom: none;">
+                <h3 style="margin: 0;">📅 Calendario</h3>
+                <div class="window-controls">
+                    <span onclick="toggleWindow('calendar-inner-area', 'min')" title="Minimizza">_</span>
+                    <span onclick="toggleWindow('calendar-inner-area', 'max')" title="Espandi">□</span>
+                </div>
+            </div>
+            <div id="calendar-inner-area">
+                <div class="calendar-controls">
+                    <select id="month-select" onchange="renderCalendar()"></select>
+                    <select id="year-select" onchange="renderCalendar()"></select>
+                </div>
+                <div class="days-grid" id="calendar-grid"></div>
+            </div>
+        </div>
+
+        <div class="accordion" style="margin-top:0;">
+            <div class="acc-header" onclick="toggleGenericAcc('numeri-content')">
+                <span>📞 Numeri Utili</span><span>▼</span>
+            </div>
+            <div class="acc-content" id="numeri-content" style="padding: 10px;">
+                <div id="rubrica-container"></div>
+                <button class="secondary-btn" onclick="addNewPhonebookCategory()">+ Nuova Categoria</button>
+            </div>
+
+            <div class="acc-header" onclick="toggleGenericAcc('promemoria-globali-content')">
+                <span>🔔 Promemoria Globali</span><span>▼</span>
+            </div>
+            <div class="acc-content" id="promemoria-globali-content">
+                <div id="global-reminders-list"></div>
+                <div style="margin-top:10px; display:flex; gap:5px; flex-direction:column;">
+                    <input type="date" id="new-g-reminder-date" style="padding:8px; border-radius:4px; border:1px solid #ddd;">
+                    <input type="text" id="new-g-reminder-text" placeholder="Testo promemoria..." style="padding:8px; border-radius:4px; border:1px solid #ddd;" onkeydown="if(event.key==='Enter') addGlobalReminder()">
+                    <button class="secondary-btn" onclick="addGlobalReminder()">+ Aggiungi Promemoria</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <div class="acc-header" onclick="toggleGenericAcc('richieste-content')" id="acc-header-richieste">
+                <span>📋 Richieste</span><span>▼</span>
+            </div>
+            <div class="acc-content" id="richieste-content">
+                <div id="richieste-list"></div>
+                <div style="margin-top: 15px;">
+                    <strong style="font-size:0.85rem; color:var(--accent);">Assegna a (Attori):</strong>
+                    <div id="actors-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
+                    <div style="display:flex; gap:5px; margin-top:10px;">
+                        <input type="text" id="new-actor-name" placeholder="Nuovo Attore" style="padding:6px; font-size:0.8rem; border-radius:4px; border:1px solid #ddd; width:100%" onkeydown="if(event.key==='Enter') saveNewActor()">
+                        <input type="color" id="new-actor-color" value="#e3f2fd" style="padding:0; width:30px; border:none; border-radius:4px; cursor:pointer;">
+                        <button onclick="saveNewActor()" style="padding:6px 10px; border:none; border-radius:4px; background:var(--primary); color:white; font-weight:bold; cursor:pointer;">Salva</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <div class="acc-header" onclick="toggleGenericAcc('anniversari-content')" id="acc-header-anniversari">
+                <span>🗓️ Anniversari (Da fare)</span><span>▼</span>
+            </div>
+            <div class="acc-content" id="anniversari-content" style="background:var(--bg)">
+                <div id="anniversaries-list"></div>
+                <button class="add-task-btn" onclick="addAnniversary()" style="padding: 10px; font-size: 0.85rem; margin-top: 10px;">+ Aggiungi Nuovo Anniversario</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="main-content">
+        <div id="alert-banner" class="banner-alert"></div>
+
+        <div class="card" style="padding: 15px;">
+            <div class="transfer-box">
+                <strong style="color:var(--primary)">🔄 Trasferisci pendenze a:</strong>
+                <input type="date" id="transfer-date" style="padding:6px; border-radius:4px; border:1px solid #90caf9;">
+                <button onclick="transferActivities()" class="secondary-btn" style="margin:0; width:auto; background:white; color:#1976d2; border-color:#1976d2;">Sposta Tutte le Pendenze</button>
+            </div>
+
+            <div class="report-controls">
+                <h3 style="margin: 0;">📄 Lettore Report</h3>
+                <div class="window-controls">
+                    <span onclick="toggleWindow('report-content-area', 'min')" title="Minimizza">_</span>
+                    <span onclick="toggleWindow('report-content-area', 'max')" title="Espandi">□</span>
+                </div>
+            </div>
+            <div id="report-content-area" class="window-minimized" style="margin-top: 10px;">
+                <input type="file" id="report-upload" accept=".txt" class="report-uploader">
+                <span style="color: var(--danger); float:right; cursor:pointer; font-size: 0.8rem; font-weight:bold;" onclick="clearReport()" title="Svuota Report">Svuota ✕</span>
+                <div style="clear:both;"></div>
+                <div id="report-display" class="report-display">In attesa di un documento...</div>
+            </div>
+        </div>
+
+        <div class="card" id="card-mansioni">
+            <h2 id="current-selection-title">Gestione Mansioni</h2>
+            <p id="current-selection-date" style="color: var(--accent); margin-bottom: 20px; font-size: 0.9rem;"></p>
+            <div id="task-list"></div>
+            <button class="add-task-btn" onclick="addNewTask()">+ Aggiungi nuova mansione</button>
+        </div>
+
+        <div class="card card-accordion" id="card-cerimonie">
+            <div class="acc-header" onclick="toggleGenericAcc('cerimonie-content')" id="acc-header-cerimonie" style="border-bottom: none;">
+                <span>⚱️ Cerimonie</span>
+                <span>▼</span>
+            </div>
+            <div class="acc-content" id="cerimonie-content" style="display: block; border-top: 1px solid #ddd; background:var(--bg)"> 
+                <div id="ceremonies-list"></div>
+                <button class="add-task-btn" onclick="addCeremony()">+ Aggiungi nuova Salma</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 10px;">📝 Note del Giorno</h3>
+            <p style="font-size: 0.8rem; color: var(--accent); margin-bottom:10px;">Le note sono separate a blocchi per permettere la scrittura simultanea a più persone senza cancellare i dati degli altri.</p>
+            
+            <div id="notes-list"></div>
+            <button class="secondary-btn" onclick="addNewNoteItem()" style="margin-top:5px; border-style:dashed;">+ Aggiungi Nota</button>
+            
+            <button class="ai-btn" onclick="facciamoIlPunto()">🤖 FACCIAMO IL PUNTO (Briefing IA)</button>
+            <p style="font-size: 0.75rem; color: var(--accent); text-align:center; margin-top:5px;">I dati operativi sono stati copiati in automatico. Incolla il testo (Ctrl+V o Tasto Destro -> Incolla) nella chat di Gemini che si aprirà.</p>
+            
+            <button class="close-day-btn" onclick="downloadDaySummary()">💾 CHIUDI E SCARICA REPORT DEL GIORNO</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- MODIFICA 1: Sfondo Dinamico Randomico ---
+    const bgImages = [
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780299/stampa_floreale_stile_woodwork_giapponese_fiori_di_ciliegi_campi_animali_soglsz.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780288/stampa_floreale_stile_woodwork_giapponese_willow_campi_animali_hgm45j.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780275/stampa_floreale_stile_woodwork_giapponese_hawaii_natura_mare_hanafuda_card_aiselg.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780256/stampa_floreale_stile_woodwork_giapponese_spoleto_animali_dita83.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780239/stampa_floreale_stile_woodwork_giapponese_spoleto_animali_1_xtc2xw.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780225/stampa_floreale_stile_woodwork_giapponese_spoleto_animali_2_ccj1vl.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780212/stampa_floreale_stile_woodwork_giapponese_esopo_animali_ciuxbq.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780200/stampa_floreale_stile_woodwork_giapponese_spoleto_animali_3_ibxabm.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780188/stampa_floreale_stile_woodwork_giapponese_fiori_di_ciliegi_campi_animali_1_bzt5yq.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780182/stampa_floreale_stile_woodwork_giapponese_fiori_di_ciliegi_campi_animali_2_vappii.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780169/stampa_floreale_stile_woodwork_giapponese_willow_campi_animali_1_krwrip.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780159/stampa_floreale_stile_woodwork_giapponese_bush_clover_animali_knfcpw.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780149/stampa_floreale_stile_woodwork_giapponese_bush_clover_animali_1_biox8b.jpg",
+        "https://res.cloudinary.com/dlppkpjqs/image/upload/v1773780130/stampa_floreale_stile_woodwork_giapponese_bush_clover_animali_2_ohrx2e.jpg"
+    ];
+
+    // --- MODIFICA 4: Formattazione Universale Date ---
+    function formattaDataIta(dStr) { 
+        if(!dStr) return 'ND'; 
+        const parts = dStr.split('-'); 
+        if(parts.length !== 3) return dStr;
+        return `${parts[2]} - ${parts[1]} - ${parts[0]}`; 
+    }
+
+    // --- 1. CONFIGURAZIONE FIREBASE ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyB2Vhs_QnZ9CXtDVm3pT1Ih0q0UnOsu5WE",
+        authDomain: "agenda-arof.firebaseapp.com",
+        projectId: "agenda-arof",
+        storageBucket: "agenda-arof.firebasestorage.app",
+        messagingSenderId: "192592642323",
+        appId: "1:192592642323:web:4188a48ab38a9fa4e65ae6"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+    let selectedDateKey = ""; 
+    let currentUser = null;
+    let unsubscribeSnapshot = null; 
+    let unsubscribeGlobal = null;
+    const saveTimeouts = {}; 
+
+    // Variabili Globali
+    let openAccordions = new Set();
+    let openRubricaCats = new Set(); 
+    let globalPhonebook = { "Medico": [], "Fiorai": [], "Comuni": [] };
+    let globalRemindersData = {};
+    let globalActors = [
+        { name: 'Stefano', color: '#e3f2fd' }, 
+        { name: 'Veronica', color: '#fce4ec' },
+        { name: 'Massimiliano', color: '#e8f5e9' },
+        { name: 'Pierpaolo', color: '#f3e5f5' },
+        { name: 'Tommaso', color: '#fff3e0' },
+        { name: 'Saverio', color: '#e0f7fa' }
+    ]; 
+
+    function selectTextContent(el) {
+        if(!el) return;
+        el.focus();
+        if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') { el.select(); return; }
+        let range = document.createRange();
+        range.selectNodeContents(el);
+        let sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    // --- WINDOW CONTROLS E NAVIGAZIONE ---
+    function toggleWindow(id, action) {
+        const el = document.getElementById(id);
+        if(action === 'min') el.classList.add('window-minimized');
+        else el.classList.remove('window-minimized');
+    }
+
+    function navTo(id) {
+        let headerEl = document.getElementById(id);
+        if (!headerEl) return;
+        
+        let contentEl = null;
+        if(id === 'card-mansioni') {
+            headerEl.scrollIntoView({behavior: 'smooth', block: 'start'});
+            return;
+        }
+
+        if(headerEl.classList.contains('acc-header')) {
+            contentEl = headerEl.nextElementSibling;
+        } else if (id === 'card-cerimonie') {
+            headerEl = document.getElementById('acc-header-cerimonie');
+            contentEl = document.getElementById('cerimonie-content');
+        }
+
+        if (contentEl && contentEl.style.display !== 'block') {
+            contentEl.style.display = 'block';
+        }
+        
+        if (headerEl) headerEl.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
+
+    // --- 2. GESTIONE ACCESSO ---
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'block';
+            loadGlobalSettings();
+            if (selectedDateKey) loadDataForDate(selectedDateKey);
+        } else {
+            currentUser = null;
+            if(unsubscribeGlobal) unsubscribeGlobal();
+            if(unsubscribeSnapshot) unsubscribeSnapshot();
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('logout-btn').style.display = 'none';
+        }
+    });
+
+    async function signIn() {
+        const e = document.getElementById('email-input').value;
+        const p = document.getElementById('password-input').value;
+        try { await auth.signInWithEmailAndPassword(e, p); document.getElementById('login-error').innerText = ''; } 
+        catch (err) { document.getElementById('login-error').innerText = "Credenziali errate."; }
+    }
+    
+    async function registerUser() {
+        const e = document.getElementById('email-input').value;
+        const p = document.getElementById('password-input').value;
+        if(p.length < 6) { document.getElementById('login-error').innerText = "Password min. 6 caratteri."; return; }
+        try { await auth.createUserWithEmailAndPassword(e, p); document.getElementById('login-error').innerText = ''; } 
+        catch (err) { document.getElementById('login-error').innerText = "Errore: " + err.message; }
+    }
+
+    async function signOut() { await auth.signOut(); }
+
+    // --- IMPOSTAZIONI GLOBALI ---
+    function loadGlobalSettings() {
+        if(!currentUser) return;
+        const ref = db.collection('utenti').doc(currentUser.uid).collection('impostazioni').doc('globali');
+        unsubscribeGlobal = ref.onSnapshot(doc => {
+            if(doc.exists) {
+                const d = doc.data();
+                if(d.phonebook) {
+                    globalPhonebook = d.phonebook;
+                    let keys = Object.keys(globalPhonebook);
+                    for(let k of keys) {
+                        if(k.toLowerCase().includes("gigi")) {
+                            delete globalPhonebook[k];
+                        }
+                    }
+                }
+                if(d.reminders) globalRemindersData = d.reminders;
+                if(d.actors) {
+                    globalActors = d.actors.filter(a => !a.name.toLowerCase().includes("gigi") && !a.name.toLowerCase().includes("claudio"));
+                }
+            } else {
+                ref.set({ phonebook: globalPhonebook, reminders: {}, actors: globalActors }, {merge:true});
+            }
+            renderRubrica();
+            renderGlobalReminders();
+            renderActors();
+            if(selectedDateKey) checkAlerts(selectedDateKey);
+        });
+    }
+    function updateGlobalSettings(key, value) {
+        if(!currentUser) return;
+        db.collection('utenti').doc(currentUser.uid).collection('impostazioni').doc('globali').set({ [key]: value }, {merge: true});
+    }
+
+    // --- 3. INIZIALIZZAZIONE & UI BASE ---
+    window.onload = () => {
+        const randomBg = bgImages[Math.floor(Math.random() * bgImages.length)];
+        document.body.style.backgroundImage = `linear-gradient(var(--bg-overlay), var(--bg-overlay)), url('${randomBg}')`;
+
+        initTheme(); setMainTitleDate(); setupSelects(); updateClock();
+        setInterval(updateClock, 1000);
+        const today = new Date();
+        selectDay(today.getDate(), today.getMonth(), today.getFullYear());
+        setupReportUploader();
+        
+        let tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1);
+        document.getElementById('transfer-date').value = tmrw.toISOString().split('T')[0];
+    };
+
+    function setMainTitleDate() {
+        const today = new Date();
+        document.getElementById('main-title').innerText = `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
+    }
+    function toggleTheme() {
+        const root = document.documentElement;
+        const newTheme = (root.getAttribute('data-theme') || 'light') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    }
+    function initTheme() {
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
+    }
+    function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('it-IT'); }
+
+    function toggleItemAccordion(headerElement, id) {
+        const itemDiv = headerElement.parentElement;
+        const contentDiv = headerElement.nextElementSibling;
+        const btnToggle = headerElement.querySelector('.c-toggle-btn');
+        
+        if (contentDiv.style.display === 'flex') {
+            contentDiv.style.display = 'none';
+            itemDiv.classList.remove('ceremony-open', 'ann-open');
+            if(btnToggle) btnToggle.innerText = 'Apri';
+            openAccordions.delete(id);
+        } else {
+            contentDiv.style.display = 'flex';
+            if(id && id.startsWith('cer_')) itemDiv.classList.add('ceremony-open');
+            if(id && id.startsWith('ann_')) itemDiv.classList.add('ann-open');
+            if(btnToggle) btnToggle.innerText = 'Chiudi';
+            openAccordions.add(id);
+        }
+    }
+
+    function toggleGenericAcc(contentId) { const content = document.getElementById(contentId); content.style.display = content.style.display === 'block' ? 'none' : 'block'; }
+    
+    function toggleSubAcc(id) { 
+        const c = document.getElementById(id); 
+        if(c.style.display === 'flex') {
+            c.style.display = 'none';
+            openRubricaCats.delete(id);
+        } else {
+            c.style.display = 'flex';
+            openRubricaCats.add(id);
+        }
+    }
+    
+    // --- ATTORI ---
+    function renderActors() {
+        const c = document.getElementById('actors-container');
+        c.innerHTML = '';
+        globalActors.forEach((act, idx) => {
+            c.innerHTML += `<button class="actor-btn" style="background:${act.color}; color:#111;" onclick="addRichiesta('${act.name}', '${act.color}')">+ ${act.name}</button>`;
+        });
+    }
+    function saveNewActor() {
+        const name = document.getElementById('new-actor-name').value.trim();
+        const color = document.getElementById('new-actor-color').value;
+        if(name) {
+            globalActors.push({ name, color });
+            updateGlobalSettings('actors', globalActors);
+            document.getElementById('new-actor-name').value = '';
+        }
+    }
+
+    // --- REPORT PARSER ---
+    function setupReportUploader() {
+        document.getElementById('report-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) { document.getElementById('report-display').innerHTML = parseReport(evt.target.result); };
+            reader.readAsText(file);
+        });
+    }
+    function clearReport() {
+        document.getElementById('report-display').textContent = 'In attesa di un documento...';
+        document.getElementById('report-upload').value = '';
+    }
+    function parseReport(text) {
+        const navHtml = `<div class="report-nav"><button onclick="document.getElementById('rep-mansioni').scrollIntoView()">Mansioni</button><button onclick="document.getElementById('rep-cerimonie').scrollIntoView()">Cerimonie</button><button onclick="document.getElementById('rep-note').scrollIntoView()">Note</button></div>`;
+        let lines = text.split('\n'); let html = ''; let currentSection = 'header';
+        for (let line of lines) {
+            let escapedLine = line.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            if (escapedLine.includes('=== COSE DA FARE ===') || escapedLine.includes('=== COSE FATTE ===')) { 
+                if (currentSection !== 'header') html += '</div>'; currentSection = 'mansioni'; 
+                html += `<div id="rep-mansioni" class="report-block block-mansioni"><strong>${escapedLine}</strong><br>`; continue; 
+            }
+            if (escapedLine.includes('[ CERIMONIE')) { if (currentSection !== 'header') html += '</div>'; currentSection = 'cerimonie'; html += `<div id="rep-cerimonie" class="report-block block-cerimonie"><strong>${escapedLine}</strong><br>`; continue; }
+            if (escapedLine.includes('[ NOTE DEL GIORNO ]')) { if (currentSection !== 'header') html += '</div>'; currentSection = 'note'; html += `<div id="rep-note" class="report-block block-note"><strong>${escapedLine}</strong><br>`; continue; }
+            if (escapedLine.includes('---') || escapedLine.includes('===')) { html += `<span class="report-divider">${escapedLine}</span><br>`; continue; }
+            if (currentSection !== 'header') {
+                if(escapedLine.startsWith('&gt; SALMA') || escapedLine.startsWith('&gt; CONTATTO')) escapedLine = `<span class="rep-salma-title"><strong>${escapedLine}</strong></span>`;
+            }
+            html += `${escapedLine}<br>`;
+        }
+        if (currentSection !== 'header') html += '</div>';
+        return navHtml + `<div style="padding-top: 5px;">${html}</div>`;
+    }
+
+    // --- CALENDARIO ---
+    function setupSelects() {
+        const mSel = document.getElementById('month-select'); const ySel = document.getElementById('year-select'); const now = new Date();
+        months.forEach((m, i) => { let opt = new Option(m, i); if(i === now.getMonth()) opt.selected = true; mSel.add(opt); });
+        for(let i = 2023; i <= 2070; i++) { let opt = new Option(i, i); if(i === now.getFullYear()) opt.selected = true; ySel.add(opt); }
+        renderCalendar();
+    }
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid'); const month = parseInt(document.getElementById('month-select').value); const year = parseInt(document.getElementById('year-select').value);
+        grid.innerHTML = ''; ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].forEach(d => grid.innerHTML += `<div class="day-name">${d}</div>`);
+        const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+        let offset = firstDay === 0 ? 6 : firstDay - 1; for(let i=0; i<offset; i++) grid.innerHTML += `<div></div>`;
+        const today = new Date();
+        for(let d=1; d<=daysInMonth; d++) {
+            const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) ? 'today' : '';
+            const isSelected = dateKey === selectedDateKey ? 'selected' : '';
+            grid.innerHTML += `<div class="day ${isToday} ${isSelected}" onclick="selectDay(${d}, ${month}, ${year})">${d}</div>`;
+        }
+    }
+    function selectDay(d, m, y) {
+        selectedDateKey = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        document.getElementById('current-selection-date').innerText = `${d} ${months[m]} ${y}`;
+        renderCalendar(); 
+        loadDataForDate(selectedDateKey);
+        checkAlerts(selectedDateKey);
+    }
+
+    function checkAlerts(selDateStr) {
+        const banner = document.getElementById('alert-banner');
+        banner.style.display = 'none'; banner.innerHTML = '';
+        let selDate = new Date(selDateStr);
+        let domaniDate = new Date(selDate); domaniDate.setDate(selDate.getDate() + 1);
+        let domaniStr = `${domaniDate.getFullYear()}-${String(domaniDate.getMonth()+1).padStart(2,'0')}-${String(domaniDate.getDate()).padStart(2,'0')}`;
+
+        let alertTexts = [];
+        Object.values(globalRemindersData).forEach(rem => {
+            if(rem.date === selDateStr) alertTexts.push(`Oggi: ${rem.text}`);
+            if(rem.date === domaniStr) alertTexts.push(`Domani: ${rem.text}`);
+        });
+
+        if(alertTexts.length > 0) {
+            banner.innerHTML = `⚠️ <span>Attenzione! ${alertTexts.join(" | ")}</span>`;
+            banner.style.display = 'flex';
+        }
+    }
+
+    // --- PROMEMORIA GLOBALI ---
+    function addGlobalReminder() {
+        const dateVal = document.getElementById('new-g-reminder-date').value;
+        const textVal = document.getElementById('new-g-reminder-text').value;
+        if(!dateVal || !textVal) return;
+        const id = 'rem_' + Date.now();
+        globalRemindersData[id] = { id, date: dateVal, text: textVal };
+        updateGlobalSettings('reminders', globalRemindersData);
+        document.getElementById('new-g-reminder-date').value = '';
+        document.getElementById('new-g-reminder-text').value = '';
+    }
+    function deleteGlobalReminder(id) { delete globalRemindersData[id]; updateGlobalSettings('reminders', globalRemindersData); }
+    function renderGlobalReminders() {
+        const list = document.getElementById('global-reminders-list'); list.innerHTML = '';
+        let sorted = Object.values(globalRemindersData).sort((a,b) => new Date(a.date) - new Date(b.date));
+        sorted.forEach(rem => {
+            list.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; border-bottom:1px solid #ddd; padding:5px 0;">
+                <span><strong>${rem.date}</strong> - ${rem.text}</span>
+                <span class="delete-btn" onclick="deleteGlobalReminder('${rem.id}')" style="padding:2px 6px;">✕</span>
+            </div>`;
+        });
+    }
+
+    // --- RUBRICA ---
+    function renderRubrica() {
+        const container = document.getElementById('rubrica-container'); container.innerHTML = '';
+        const sortedCategories = Object.keys(globalPhonebook).sort();
+        
+        sortedCategories.forEach((cat, index) => {
+            const accId = 'sub-acc-' + index; let contactsHtml = '';
+            
+            let isOp = openRubricaCats.has(accId);
+
+            globalPhonebook[cat].forEach((contact, cIndex) => {
+                contactsHtml += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; border-bottom:1px dashed #eee; padding:4px 0;">
+                    <span>${contact.name}: <strong>${contact.number}</strong></span>
+                    <span class="delete-btn" style="padding:2px 6px;" onclick="deleteContact('${cat}', ${cIndex})">✕</span>
+                </div>`;
+            });
+            container.innerHTML += `
+                <div class="sub-accordion">
+                    <div class="sub-acc-header" onclick="toggleSubAcc('${accId}')"><span>${cat}</span><span>▼</span></div>
+                    <div class="sub-acc-content" id="${accId}" style="display: ${isOp ? 'flex' : 'none'};">
+                        ${contactsHtml}
+                        <div style="display:flex; gap:5px; margin-top:5px;">
+                            <input type="text" id="new-c-name-${index}" placeholder="Nome" style="flex:1; padding:5px; font-size:0.8rem;" onkeydown="if(event.key==='Enter') addContact('${cat}', ${index})">
+                            <input type="text" id="new-c-num-${index}" placeholder="Numero" style="flex:1; padding:5px; font-size:0.8rem;" onkeydown="if(event.key==='Enter') addContact('${cat}', ${index})">
+                            <button onclick="addContact('${cat}', ${index})" style="padding:5px 10px; cursor:pointer; font-weight:bold; background:var(--success); color:white; border:none; border-radius:4px;">Salva</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    function addNewPhonebookCategory() {
+        const name = prompt("Nome della nuova categoria:");
+        if(name && !globalPhonebook[name]) { globalPhonebook[name] = []; updateGlobalSettings('phonebook', globalPhonebook); }
+    }
+    function addContact(cat, index) {
+        const nameEl = document.getElementById(`new-c-name-${index}`);
+        const numEl = document.getElementById(`new-c-num-${index}`);
+        if(nameEl.value && numEl.value) {
+            globalPhonebook[cat].push({name: nameEl.value, number: numEl.value});
+            updateGlobalSettings('phonebook', globalPhonebook);
+            nameEl.value = ''; numEl.value = ''; 
+        }
+    }
+    function deleteContact(cat, cIndex) { globalPhonebook[cat].splice(cIndex, 1); updateGlobalSettings('phonebook', globalPhonebook); }
+
+    // --- LOGICA DI SALVATAGGIO ---
+    function getDocRef(dateKey = selectedDateKey) { return db.collection('utenti').doc(currentUser.uid).collection('giornate').doc(dateKey); }
+
+    function debounceSaveTask(id) {
+        clearTimeout(saveTimeouts['task_'+id]);
+        saveTimeouts['task_'+id] = setTimeout(() => {
+            const el = document.getElementById(id); if(!el) return;
+            const text = el.querySelector('.task-text').value;
+            const completed = el.querySelector('.check-btn').classList.contains('active');
+            getDocRef().set({ tasks: { [id]: { id, text, completed, ts: Date.now() } } }, { merge: true });
+        }, 500);
+    }
+    
+    async function deleteTaskDB(id) {
+        if(document.getElementById(id)) document.getElementById(id).remove(); 
+        try { 
+            await getDocRef().update({ [`tasks.${id}`]: firebase.firestore.FieldValue.delete() }); 
+        } catch(e){
+            console.error("Errore cancellazione task:", e);
+        }
+    }
+
+    function debounceSaveRichiesta(id) {
+        clearTimeout(saveTimeouts['rich_'+id]);
+        saveTimeouts['rich_'+id] = setTimeout(() => {
+            const el = document.getElementById(id); if(!el) return;
+            const text = el.querySelector('.task-text').value;
+            const completed = el.querySelector('.check-btn').classList.contains('active');
+            const actor = el.dataset.actor; const color = el.dataset.color;
+            getDocRef().set({ richieste: { [id]: { id, text, completed, actor, color, ts: Date.now() } } }, { merge: true });
+        }, 500);
+    }
+    async function deleteRichiestaDB(id) {
+        if(document.getElementById(id)) document.getElementById(id).remove();
+        try { await getDocRef().update({ [`richieste.${id}`]: firebase.firestore.FieldValue.delete() }); } catch(e){}
+    }
+
+    async function saveCeremonyStrict(id, payload) {
+        const ref = getDocRef();
+        try { await ref.update({ [`ceremonies.${id}`]: payload }); } 
+        catch(e) { await ref.set({ ceremonies: { [id]: payload } }, { merge: true }); }
+    }
+
+    function debounceSaveCeremony(id) {
+        clearTimeout(saveTimeouts['cer_'+id]);
+        saveTimeouts['cer_'+id] = setTimeout(() => {
+            const el = document.getElementById(id); if(!el) return;
+            let innerTasks = {};
+            el.querySelectorAll('.inner-task-item').forEach(it => {
+                let tId = it.dataset.id;
+                innerTasks[tId] = { id: tId, text: it.querySelector('.t-text').value, completed: it.querySelector('input[type="checkbox"]').checked };
+            });
+
+            let dataToSave = {
+                id, 
+                name: el.querySelector('.c-name').innerText.trim(), 
+                deathDetails: el.querySelector('.c-death').value,
+                funeralDate: el.querySelector('.c-funeral').value, 
+                funeralTime: el.querySelector('.c-funeral-time').value,
+                team: el.querySelector('.c-team').value, 
+                chiesa: el.querySelector('.c-chiesa').value,
+                cimitero: el.querySelector('.c-cimitero').value,
+                tasks: innerTasks, 
+                ts: Date.now()
+            };
+            
+            saveCeremonyStrict(id, dataToSave);
+            updateCeremonyProgress(id); 
+        }, 300);
+    }
+    async function deleteCeremonyDB(id) {
+        if(document.getElementById(id)) document.getElementById(id).remove();
+        try { await getDocRef().update({ [`ceremonies.${id}`]: firebase.firestore.FieldValue.delete() }); } catch(e){}
+    }
+
+    function debounceSaveAnniversary(id) {
+        clearTimeout(saveTimeouts['ann_'+id]);
+        saveTimeouts['ann_'+id] = setTimeout(() => {
+            const el = document.getElementById(id); if(!el) return;
+            const statusRadio = el.querySelector('input[type="radio"]:checked');
+            const status = statusRadio ? statusRadio.value : "";
+            const isFatto = el.querySelector('.a-fatto-input') ? el.querySelector('.a-fatto-input').checked : el.querySelector('.a-fatto-header').checked;
+            const nameEl = el.querySelector('.a-name');
+            const familiare = el.querySelector('.a-familiare').value;
+
+            getDocRef().set({ anniversaries: { [id]: {
+                id, name: nameEl.innerText.trim(), date: el.querySelector('.a-date').value,
+                fatto: isFatto, familiare: familiare, dove: el.querySelector('.a-dove').value, ts: Date.now()
+            }}}, { merge: true });
+        }, 300);
+    }
+    async function deleteAnniversaryDB(id) {
+        if(document.getElementById(id)) document.getElementById(id).remove();
+        try { await getDocRef().update({ [`anniversaries.${id}`]: firebase.firestore.FieldValue.delete() }); } catch(e){}
+    }
+
+    // --- NOTE MULTIPLE ---
+    function debounceSaveNoteItem(id) {
+        clearTimeout(saveTimeouts['note_'+id]);
+        saveTimeouts['note_'+id] = setTimeout(() => {
+            const el = document.getElementById(id); if(!el) return;
+            const text = el.querySelector('.note-text').value;
+            getDocRef().set({ notesList: { [id]: { id, text, ts: Date.now() } } }, { merge: true });
+        }, 500);
+    }
+    async function deleteNoteItemDB(id) {
+        if(id === 'legacy_note') {
+            document.getElementById(id).remove();
+            try { await getDocRef().update({ notes: firebase.firestore.FieldValue.delete() }); } catch(e){}
+            return;
+        }
+        if(document.getElementById(id)) document.getElementById(id).remove();
+        try { await getDocRef().update({ [`notesList.${id}`]: firebase.firestore.FieldValue.delete() }); } catch(e){}
+    }
+
+    // --- DASHBOARD UPDATER ---
+    function updateDashboardCounters(data) {
+        let taskCount = 0; let reqCount = 0; let cerCount = 0; let annCount = 0;
+        
+        if(data.tasks) Object.values(data.tasks).forEach(t => { if(!t.completed) taskCount++; });
+        if(data.richieste) Object.values(data.richieste).forEach(r => { if(!r.completed) reqCount++; });
+        
+        if(data.ceremonies) {
+            Object.values(data.ceremonies).forEach(c => {
+                if(!c.tasks) {
+                    cerCount++;
+                    return;
+                }
+                let cTasks = Object.values(c.tasks);
+                let completedTasks = cTasks.filter(t => t.completed).length;
+                if(cTasks.length === 0 || completedTasks < cTasks.length) cerCount++;
+            });
+        }
+        
+        if(data.anniversaries) {
+            Object.values(data.anniversaries).forEach(a => { if(!a.fatto) annCount++; });
+        }
+        
+        document.getElementById('dashboard-counters').innerHTML = `
+            <span onclick="navTo('card-mansioni')">📍 ${taskCount} Mansioni</span>
+            <span onclick="navTo('card-cerimonie')">⚱️ ${cerCount} Cerimonie (da chiudere)</span>
+            <span onclick="navTo('acc-header-richieste')">📋 ${reqCount} Richieste</span>
+            <span onclick="navTo('acc-header-anniversari')">🗓️ ${annCount} Anniversari</span>
+        `;
+    }
+
+    // --- SINCRONIZZAZIONE LIVE ---
+    async function loadDataForDate(dateKey) {
+        if (!currentUser) return;
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+        document.getElementById('task-list').innerHTML = ''; document.getElementById('ceremonies-list').innerHTML = '';
+        document.getElementById('anniversaries-list').innerHTML = '';
+        document.getElementById('richieste-list').innerHTML = ''; document.getElementById('notes-list').innerHTML = '';
+
+        unsubscribeSnapshot = getDocRef().onSnapshot((doc) => {
+            const activeElement = document.activeElement;
+            const isTyping = activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.classList.contains('editable-title'));
+            
+            if (doc.exists) {
+                const data = doc.data();
+                updateDashboardCounters(data);
+                if (!isTyping) { 
+                    document.getElementById('task-list').innerHTML = '';
+                    const tasks = data.tasks ? Object.values(data.tasks).sort((a,b) => a.ts - b.ts) : [];
+                    tasks.forEach(t => renderTaskItem(t));
+
+                    document.getElementById('richieste-list').innerHTML = '';
+                    const richieste = data.richieste ? Object.values(data.richieste).sort((a,b) => a.ts - b.ts) : [];
+                    richieste.forEach(r => renderRichiestaItem(r));
+
+                    document.getElementById('ceremonies-list').innerHTML = '';
+                    const ceremonies = data.ceremonies ? Object.values(data.ceremonies).sort((a,b) => a.ts - b.ts) : [];
+                    ceremonies.forEach(c => renderCeremonyItem(c));
+
+                    document.getElementById('anniversaries-list').innerHTML = '';
+                    const anniversaries = data.anniversaries ? Object.values(data.anniversaries).sort((a,b) => a.ts - b.ts) : [];
+                    anniversaries.forEach(a => renderAnniversaryItem(a)); 
+
+                    document.getElementById('notes-list').innerHTML = '';
+                    const notesObj = data.notesList || {};
+                    let notesArr = Object.values(notesObj).sort((a,b) => a.ts - b.ts);
+                    
+                    if (data.notes && typeof data.notes === 'string' && notesArr.length === 0) {
+                        renderNoteItem({ id: 'legacy_note', text: data.notes });
+                    } else {
+                        notesArr.forEach(n => renderNoteItem(n));
+                    }
+                }
+            } else {
+                updateDashboardCounters({});
+                if (!isTyping) {
+                    document.getElementById('task-list').innerHTML = ''; document.getElementById('richieste-list').innerHTML = '';
+                    document.getElementById('ceremonies-list').innerHTML = ''; document.getElementById('anniversaries-list').innerHTML = '';
+                    document.getElementById('notes-list').innerHTML = '';
+                }
+            }
+        });
+    }
+
+    // --- COSTRUTTORI UI ---
+    function addNewTask() {
+        const id = "task_" + Date.now() + Math.floor(Math.random() * 1000);
+        renderTaskItem({ id: id, text: "", completed: false });
+        setTimeout(() => selectTextContent(document.querySelector(`#${id} .task-text`)), 50);
+        debounceSaveTask(id);
+    }
+    function renderTaskItem(data) {
+        const list = document.getElementById('task-list');
+        const div = document.createElement('div'); div.className = 'task-item'; div.id = data.id;
+        div.innerHTML = `
+            <div class="check-btn ${data.completed ? 'active' : ''}" onclick="toggleTask('${data.id}')"></div>
+            <input type="text" class="task-text ${data.completed ? 'completed' : ''}" value="${data.text}" placeholder="Nuova mansione..." onclick="this.select()" oninput="debounceSaveTask('${data.id}')" onkeydown="if(event.key==='Enter') this.blur()">
+            <span class="delete-btn" onclick="deleteTaskDB('${data.id}')">✕</span>
+        `;
+        list.appendChild(div);
+    }
+    function toggleTask(id) {
+        const el = document.getElementById(id); const btn = el.querySelector('.check-btn');
+        btn.classList.toggle('active'); el.querySelector('.task-text').classList.toggle('completed'); debounceSaveTask(id);
+    }
+
+    function addRichiesta(actorName, actorColor) {
+        const id = "rich_" + Date.now() + Math.floor(Math.random() * 1000);
+        renderRichiestaItem({ id: id, text: "", completed: false, actor: actorName, color: actorColor });
+        setTimeout(() => selectTextContent(document.querySelector(`#${id} .task-text`)), 50);
+        debounceSaveRichiesta(id);
+    }
+    function renderRichiestaItem(data) {
+        const list = document.getElementById('richieste-list');
+        const div = document.createElement('div'); div.className = `richiesta-item ${data.completed ? 'completed' : ''}`;  
+        div.id = data.id; div.dataset.actor = data.actor; div.dataset.color = data.color;
+        div.style.backgroundColor = data.color; div.style.color = '#333';
+        div.innerHTML = `
+            <div class="check-btn ${data.completed ? 'active' : ''}" onclick="toggleRichiesta('${data.id}')" style="background:#fff; margin-top:2px;"></div>
+            <div style="font-weight:bold; font-size:0.8rem; background:rgba(255,255,255,0.5); padding:2px 5px; border-radius:4px; margin-top:2px;">${data.actor}</div>
+            <textarea class="task-text" style="background:transparent; color:inherit; font-weight:600; resize:none; overflow:hidden; min-height: 25px; line-height:1.3; padding:2px;" placeholder="Dettagli richiesta..." oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'; debounceSaveRichiesta('${data.id}')" onclick="this.select()">${data.text}</textarea>
+            <span class="delete-btn" onclick="deleteRichiestaDB('${data.id}')" style="margin-top:2px;">✕</span>
+        `;
+        list.appendChild(div);
+        
+        setTimeout(() => {
+            const ta = div.querySelector('textarea');
+            if(ta) { ta.style.height = ''; ta.style.height = ta.scrollHeight + 'px'; }
+        }, 10);
+    }
+    function toggleRichiesta(id) {
+        const el = document.getElementById(id); el.querySelector('.check-btn').classList.toggle('active'); el.classList.toggle('completed'); debounceSaveRichiesta(id);
+    }
+
+    function addNewNoteItem() {
+        const id = "note_" + Date.now() + Math.floor(Math.random() * 1000);
+        renderNoteItem({ id: id, text: "" });
+        setTimeout(() => selectTextContent(document.querySelector(`#${id} .note-text`)), 50);
+        debounceSaveNoteItem(id);
+    }
+    function renderNoteItem(data) {
+        const list = document.getElementById('notes-list');
+        const div = document.createElement('div'); div.className = 'note-item'; div.id = data.id;
+        div.innerHTML = `
+            <textarea class="note-text" placeholder="Scrivi una nota..." oninput="this.style.height=''; this.style.height=this.scrollHeight+'px'; debounceSaveNoteItem('${data.id}')" onclick="this.select()">${data.text}</textarea>
+            <span class="delete-btn" onclick="deleteNoteItemDB('${data.id}')" style="margin-left:8px; padding:2px 6px;">✕</span>
+        `;
+        list.appendChild(div);
+        
+        setTimeout(() => {
+            const ta = div.querySelector('.note-text');
+            if(ta) { ta.style.height = ''; ta.style.height = ta.scrollHeight + 'px'; }
+        }, 10);
+    }
+
+    // --- SALME (Cerimonie) ---
+    function addCeremony() {
+        const id = "cer_" + Date.now() + Math.floor(Math.random() * 1000);
+        const defaultTasks = {};
+        const mansioniPredefinite = ["Medico", "Fioraio", "Vestizione", "Cassa", "Trasporto", "Chiesa", "Cimitero", "Necrologio Online", "Affissione", "Ricordini", "Estratto di Morte", "Passaporto Mortuario"];
+        
+        mansioniPredefinite.forEach(t => {
+            const tid = "ctask_" + Date.now() + Math.floor(Math.random() * 1000);
+            defaultTasks[tid] = { id: tid, text: t, completed: false };
+        });
+        
+        renderCeremonyItem({ id: id, name: "Nome Salma...", deathDetails: "", funeralDate: "", funeralTime: "", team: "", chiesa: "", cimitero: "", tasks: defaultTasks, isNew: true });
+        setTimeout(() => selectTextContent(document.querySelector(`#${id} .c-name`)), 50);
+        debounceSaveCeremony(id);
+    }
+
+    function printCeremony(id) {
+        const el = document.getElementById(id);
+        if(!el) return;
+        const name = el.querySelector('.c-name').innerText;
+        const date = el.querySelector('.c-funeral').value;
+        const time = el.querySelector('.c-funeral-time').value;
+        const team = el.querySelector('.c-team').value;
+        const chiesa = el.querySelector('.c-chiesa').value;
+        const cimitero = el.querySelector('.c-cimitero').value;
+
+        let dateFormattata = formattaDataIta(date);
+        
+        let str = `==========================================\n`;
+        str += `        DATI CERIMONIA: ${name.toUpperCase()}        \n`;
+        str += `==========================================\n\n`;
+        str += `Luogo Cerimonia (Chiesa): ${chiesa || 'Non specificato'}\n`;
+        str += `Cimitero: ${cimitero || 'Non specificato'}\n`;
+        str += `Data Funerale: ${dateFormattata}\n`;
+        str += `Ora Funerale: ${time || 'Non specificata'}\n`;
+        str += `Squadra Operativa: ${team || 'Non specificata'}\n`;
+
+        triggerDownload(str, `Dati_Cerimonia_${name.replace(/\s+/g, '_')}.txt`);
+    }
+
+    function renderCeremonyItem(data) {
+        const list = document.getElementById('ceremonies-list');
+        const div = document.createElement('div'); div.className = 'ceremony-item'; div.id = data.id;
+        let tasksHtml = '';
+        if(data.tasks) {
+            Object.values(data.tasks).forEach(t => {
+                tasksHtml += `
+                    <div class="inner-task-item" data-id="${t.id}">
+                        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="debounceSaveCeremony('${data.id}')">
+                        <input type="text" class="t-text" value="${t.text}" style="flex:1; border:none; background:transparent; font-size:0.85rem;" oninput="debounceSaveCeremony('${data.id}')" onclick="this.select()" onkeydown="if(event.key==='Enter') this.blur()">
+                        <span class="delete-btn" onclick="this.parentElement.remove(); debounceSaveCeremony('${data.id}')">✕</span>
+                    </div>
+                `;
+            });
+        }
+        let isOp = data.isNew || openAccordions.has(data.id); if(data.isNew) openAccordions.add(data.id);
+        if(isOp) div.classList.add('ceremony-open');
+        
+        let toggleText = isOp ? "Chiudi" : "Apri";
+
+        div.innerHTML = `
+            <div class="ceremony-header" onclick="toggleItemAccordion(this, '${data.id}')">
+                <div style="flex:1;">
+                    <div contenteditable="true" class="c-name editable-title" onclick="event.stopPropagation()" oninput="debounceSaveCeremony('${data.id}')" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${data.name}</div>
+                    <div class="progress-container"><div class="progress-bar c-prog" style="width:0%"></div></div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="c-toggle-btn" onclick="event.stopPropagation(); toggleItemAccordion(this.parentElement.parentElement, '${data.id}')">${toggleText}</button>
+                    <span class="c-done-badge" style="display:none; font-weight:bold; font-size:0.8rem;">COMPLETATA</span>
+                    <span class="delete-btn" onclick="event.stopPropagation(); if(confirm('Eliminare Salma?')) deleteCeremonyDB('${data.id}')" style="background:transparent; color:inherit; font-size:1.2rem; padding:0;">🗑️</span>
+                </div>
+            </div>
+            <div class="ceremony-content" style="display: ${isOp ? 'flex' : 'none'};">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px; background:#f0f2f5; padding:10px; border-radius:6px;">
+                    <div class="form-group"><label>Luogo Cerimonia (Chiesa)</label><input type="text" class="c-chiesa" value="${data.chiesa || ''}" oninput="debounceSaveCeremony('${data.id}')" placeholder="Es. Parrocchia San Pietro..."></div>
+                    <div class="form-group"><label>Cimitero</label><input type="text" class="c-cimitero" value="${data.cimitero || ''}" oninput="debounceSaveCeremony('${data.id}')" placeholder="Es. Cimitero Monumentale..."></div>
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="form-group"><label>Data Decesso</label><input type="date" class="c-death" value="${data.deathDetails || ''}" oninput="debounceSaveCeremony('${data.id}')"></div>
+                    <div class="form-group"><label>Data Funerale</label><input type="date" class="c-funeral" value="${data.funeralDate || ''}" oninput="debounceSaveCeremony('${data.id}')"></div>
+                    <div class="form-group"><label>Ora Funerale</label><input type="time" step="900" class="c-funeral-time" value="${data.funeralTime || ''}" oninput="debounceSaveCeremony('${data.id}')"></div>
+                    <div class="form-group"><label>Squadra</label><input type="text" class="c-team" value="${data.team || ''}" oninput="debounceSaveCeremony('${data.id}')" placeholder="Nomi..."></div>
+                </div>
+                
+                <div class="form-group" style="margin-top:10px;">
+                    <label>Mansioni Cerimonia</label>
+                    <div class="c-tasks-list" style="background:var(--card); border:1px solid #ddd; border-radius:4px; padding:5px;">${tasksHtml}</div>
+                    <button class="secondary-btn" onclick="addCeremonyTask('${data.id}')" style="margin-top:5px;">+ Aggiungi Mansione Salma</button>
+                </div>
+                
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button class="secondary-btn" style="flex:1; background:#fff; border-color:var(--primary); color:var(--primary); font-weight:bold;" onclick="printCeremony('${data.id}')">🖨️ Stampa Dati Cerimonia</button>
+                    <button class="secondary-btn" style="flex:1; background:#f0f2f5; color:#333; font-weight:bold;" onclick="toggleItemAccordion(this.parentElement.parentElement.previousElementSibling, '${data.id}')">▲ Chiudi Cerimonia</button>
+                </div>
+            </div>
+        `;
+        list.appendChild(div); updateCeremonyProgress(data.id);
+    }
+
+    function addCeremonyTask(cerId) {
+        const tList = document.getElementById(cerId).querySelector('.c-tasks-list');
+        const tid = "ctask_" + Date.now() + Math.floor(Math.random() * 1000);
+        const div = document.createElement('div'); div.className = 'inner-task-item'; div.dataset.id = tid;
+        div.innerHTML = `
+            <input type="checkbox" onchange="debounceSaveCeremony('${cerId}')">
+            <input type="text" class="t-text" value="Nuova mansione..." style="flex:1; border:none; background:transparent; font-size:0.85rem;" oninput="debounceSaveCeremony('${cerId}')" onclick="this.select()" onkeydown="if(event.key==='Enter') this.blur()">
+            <span class="delete-btn" onclick="this.parentElement.remove(); debounceSaveCeremony('${cerId}')">✕</span>
+        `;
+        tList.appendChild(div);
+        setTimeout(() => selectTextContent(div.querySelector('.t-text')), 50);
+        debounceSaveCeremony(cerId);
+    }
+
+    function updateCeremonyProgress(id) {
+        const el = document.getElementById(id); if(!el) return;
+        const cbxs = el.querySelectorAll('.inner-task-item input[type="checkbox"]');
+        let total = cbxs.length; let comp = 0; cbxs.forEach(c => { if(c.checked) comp++; });
+        let perc = total > 0 ? (comp/total)*100 : 0;
+        
+        const header = el.querySelector('.ceremony-header');
+        const nameEl = el.querySelector('.c-name'); 
+        const badge = el.querySelector('.c-done-badge');
+        const progBar = el.querySelector('.c-prog');
+        
+        if (progBar) progBar.style.width = perc + '%';
+        
+        header.classList.remove('c-status-yellow', 'c-status-green');
+        
+        if (perc === 100 && total > 0) {
+            header.classList.add('c-status-green');
+            nameEl.classList.add('c-strike');
+            if(badge) badge.style.display = 'inline';
+        } else {
+            header.classList.add('c-status-yellow');
+            nameEl.classList.remove('c-strike');
+            if(badge) badge.style.display = 'none';
+        }
+    }
+
+    // --- ANNIVERSARI ---
+    function addAnniversary() {
+        const id = "ann_" + Date.now() + Math.floor(Math.random() * 1000);
+        renderAnniversaryItem({ id: id, name: "Nome Defunto...", date: "", fatto: false, familiare: "", dove: "", isNew: true });
+        setTimeout(() => selectTextContent(document.querySelector(`#${id} .a-name`)), 50);
+        debounceSaveAnniversary(id);
+    }
+
+    function renderAnniversaryItem(data) {
+        const targetList = document.getElementById('anniversaries-list');
+        
+        let isOp = data.isNew || openAccordions.has(data.id); if(data.isNew) openAccordions.add(data.id);
+        
+        let toggleText = isOp ? "Chiudi" : "Apri";
+        let headerColorClass = data.fatto ? 'c-status-green' : 'a-status-default';
+
+        const div = document.createElement('div'); div.className = `anniversary-item`; div.id = data.id;
+        if(isOp) div.classList.add('ann-open');
+        
+        div.innerHTML = `
+            <div class="anniversary-header ${headerColorClass}" onclick="toggleItemAccordion(this, '${data.id}')">
+                <div style="flex:1; display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" class="a-fatto-header" ${data.fatto ? 'checked' : ''} onchange="debounceSaveAnniversary('${data.id}')" onclick="event.stopPropagation()" style="width:18px; height:18px; cursor:pointer;">
+                    <div contenteditable="true" class="a-name editable-title ${data.fatto ? 'c-strike' : ''}" onclick="event.stopPropagation()" oninput="debounceSaveAnniversary('${data.id}')" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}">${data.name}</div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="c-toggle-btn" onclick="event.stopPropagation(); toggleItemAccordion(this.parentElement.parentElement, '${data.id}')">${toggleText}</button>
+                    <span class="delete-btn" onclick="event.stopPropagation(); if(confirm('Eliminare Contatto?')) deleteAnniversaryDB('${data.id}')" style="background:transparent; color:inherit; font-size:1.2rem; padding:0;">🗑️</span>
+                </div>
+            </div>
+            <div class="anniversary-content" style="display: ${isOp ? 'flex' : 'none'};">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 10px;">
+                    <div class="form-group"><label>Data Anniversario</label><input type="date" class="a-date" value="${data.date || ''}" oninput="debounceSaveAnniversary('${data.id}')"></div>
+                    <div class="form-group">
+                        <label>Nome Familiare</label>
+                        <textarea class="a-familiare" placeholder="Es. Mario Rossi" oninput="this.style.height=''; this.style.height=this.scrollHeight+'px'; debounceSaveAnniversary('${data.id}')" style="resize: none; overflow: hidden; min-height: 36px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 0.85rem; width: 100%; box-sizing: border-box; background: transparent;">${data.familiare || ''}</textarea>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 5px;">
+                    <label>Luoghi (Indirizzi, affissioni...)</label>
+                    <textarea class="a-dove" placeholder="Dove mettere i manifesti (indirizzi, note...)" oninput="debounceSaveAnniversary('${data.id}')">${data.dove || ''}</textarea>
+                </div>
+            </div>
+        `;
+        targetList.appendChild(div);
+        
+        setTimeout(() => {
+            const taList = div.querySelectorAll('textarea');
+            taList.forEach(ta => {
+                if(ta) { ta.style.height = ''; ta.style.height = ta.scrollHeight + 'px'; }
+            });
+        }, 10);
+    }
+
+    // --- TRASFERIMENTO ATTIVITA' ---
+    async function transferActivities() {
+        const targetDate = document.getElementById('transfer-date').value;
+        if(!targetDate) return alert("Seleziona una data di destinazione dal calendario sopra il pulsante.");
+        if(targetDate === selectedDateKey) return alert("Non puoi trasferire attività nello stesso giorno!");
+        
+        const targetDateIT = formattaDataIta(targetDate);
+        const selDateIT = formattaDataIta(selectedDateKey);
+
+        if(!confirm(`Spostare tutte le pendenze dal ${selDateIT} al ${targetDateIT}?`)) return;
+
+        try {
+            const currentRef = getDocRef(selectedDateKey);
+            const targetRef = getDocRef(targetDate);
+            
+            const doc = await currentRef.get();
+            if(!doc.exists) return alert("Nessun dato da trasferire oggi.");
+            
+            let data = doc.data();
+            let tasksToMove = {}; let richToMove = {};
+            let cerToMove = {}; let annToMove = {};
+            
+            let countMoved = 0;
+
+            if(data.tasks) {
+                Object.values(data.tasks).forEach(t => {
+                    if(!t.completed) { 
+                        let newTask = {...t, text: t.text + " (" + selDateIT + ")"};
+                        tasksToMove[t.id] = newTask; 
+                        countMoved++; 
+                    }
+                });
+            }
+            if(data.richieste) {
+                Object.values(data.richieste).forEach(r => {
+                    if(!r.completed) { 
+                        let newRich = {...r, text: r.text + " (" + selDateIT + ")"};
+                        richToMove[r.id] = newRich; 
+                        countMoved++; 
+                    }
+                });
+            }
+            if(data.ceremonies) {
+                Object.values(data.ceremonies).forEach(c => {
+                    let cTasks = Object.values(c.tasks || {});
+                    let compTasks = cTasks.filter(t => t.completed).length;
+                    let isComp = (cTasks.length > 0 && compTasks === cTasks.length);
+                    if (!isComp) {
+                        cerToMove[c.id] = c;
+                        countMoved++;
+                    }
+                });
+            }
+            if(data.anniversaries) {
+                Object.values(data.anniversaries).forEach(a => {
+                    if (!a.fatto) {
+                        annToMove[a.id] = a;
+                        countMoved++;
+                    }
+                });
+            }
+
+            if(countMoved === 0) return alert("Non ci sono pendenze da trasferire.");
+
+            await targetRef.set({ 
+                tasks: tasksToMove, 
+                richieste: richToMove,
+                ceremonies: cerToMove,
+                anniversaries: annToMove
+            }, { merge: true });
+
+            alert(`✅ ${countMoved} attività copiate con successo al ${targetDateIT}!`);
+        } catch(e) {
+            console.error(e); alert("Errore durante il trasferimento.");
+        }
+    }
+
+    async function facciamoIlPunto() {
+        if(!currentUser) return;
+        getDocRef().get().then(doc => {
+            let data = doc.exists ? doc.data() : {};
+            let strReport = formatReportData(selectedDateKey, data);
+            let dateITA = formattaDataIta(selectedDateKey);
+            
+            let prompt = `Sei un assistente operativo senior per un'agenzia funebre. Non usare convenevoli, sii conciso, asciutto e pragmatico. Il tuo compito è aiutarmi a fare ordine nella giornata.\n\nEcco il report completo della giornata (${dateITA}):\n\n${strReport}\n\nFai un rapido punto della situazione: evidenzia cosa manca da chiudere urgentemente e organizza le priorità.`;
+            
+            navigator.clipboard.writeText(prompt).then(() => {
+                alert("✅ Report operativo copiato! Si aprirà Gemini per incollarlo.");
+                window.open('https://gemini.google.com/app', '_blank');
+            });
+        });
+    }
+
+    function downloadDaySummary() {
+        if(!currentUser) return;
+        getDocRef().get().then(doc => {
+            let data = doc.exists ? doc.data() : {};
+            let dateITA = formattaDataIta(selectedDateKey);
+            let str = `==========================================\n        REPORT DATA: ${dateITA}        \n==========================================\n\n` + formatReportData(selectedDateKey, data);
+            triggerDownload(str, `Report_Data_${selectedDateKey}.txt`);
+        });
+    }
+
+    function formatReportData(dateStr, data) {
+        let daFareArr = []; let fattoArr = []; let notesArr = [];
+        if(data.tasks) Object.values(data.tasks).forEach(t => { let l = `- Mansione: ${t.text}`; t.completed ? fattoArr.push("[MANSIONI] " + l) : daFareArr.push("[MANSIONI] " + l); });
+        if(data.richieste) Object.values(data.richieste).forEach(r => { let l = `- Richiesta di ${r.actor}: ${r.text}`; r.completed ? fattoArr.push("[RICHIESTE] " + l) : daFareArr.push("[RICHIESTE] " + l); });
+        if(data.ceremonies) {
+            Object.values(data.ceremonies).forEach(c => {
+                let funDate = c.funeralDate ? formattaDataIta(c.funeralDate) : "ND";
+                let decDate = c.deathDetails ? formattaDataIta(c.deathDetails) : "ND";
+                let base = `> SALMA: ${c.name.toUpperCase()} (Dec: ${decDate}, Fun: ${funDate} ${c.funeralTime||""}, Sq: ${c.team||"ND"})`;
+                let u_tasks = []; let c_tasks = [];
+                if(c.tasks) Object.values(c.tasks).forEach(ct => { ct.completed ? c_tasks.push(ct.text) : u_tasks.push(ct.text); });
+                if(u_tasks.length > 0) daFareArr.push(`[CERIMONIE] ${base}\n   Da svolgere: ${u_tasks.join(', ')}`);
+                if(c_tasks.length > 0) fattoArr.push(`[CERIMONIE] ${base}\n   Svolto: ${c_tasks.join(', ')}`);
+            });
+        }
+        if(data.anniversaries) Object.values(data.anniversaries).forEach(a => {
+            let annDate = formattaDataIta(a.date);
+            let l = `- Famiglia: ${a.name.toUpperCase()} | Data: ${annDate} | Familiare: ${a.familiare||"ND"} | Dove: ${a.dove||"ND"}`;
+            a.fatto ? fattoArr.push("[ANNIVERSARI] " + l) : daFareArr.push("[ANNIVERSARI] " + l);
+        });
+        
+        if(data.notesList) {
+            Object.values(data.notesList).sort((a,b)=>a.ts - b.ts).forEach(n => {
+                if(n.text.trim() !== '') notesArr.push("- " + n.text);
+            });
+        }
+        if(data.notes && typeof data.notes === 'string') notesArr.push(data.notes);
+
+        let c = `=== COSE DA FARE ===\n\n${daFareArr.length ? daFareArr.join("\n")+"\n" : "Nessuna attività in sospeso.\n"}\n==========================================\n\n=== COSE FATTE ===\n\n${fattoArr.length ? fattoArr.join("\n")+"\n" : "Nessuna attività completata.\n"}\n------------------------------------------\n[ NOTE DEL GIORNO ]\n${notesArr.join('\n') || "Nessuna nota inserita."}\n`;
+        return c;
+    }
+
+    function triggerDownload(content, filename) {
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob); 
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+        setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    }
+</script>
+</body>
+</html>
