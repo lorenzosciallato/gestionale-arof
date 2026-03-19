@@ -841,6 +841,9 @@
                 team: el.querySelector('.c-team').value, 
                 chiesa: el.querySelector('.c-chiesa').value,
                 cimitero: el.querySelector('.c-cimitero').value,
+                offerte: el.querySelector('.c-offerte').value,
+    offerteAChi: el.querySelector('.c-offerte-achi').value,
+    ricordini: el.querySelector('.c-ricordini').value,
                 tasks: innerTasks, 
                 ts: Date.now()
             };
@@ -1075,6 +1078,9 @@
         const team = el.querySelector('.c-team').value;
         const chiesa = el.querySelector('.c-chiesa').value;
         const cimitero = el.querySelector('.c-cimitero').value;
+        const offerte = el.querySelector('.c-offerte').value;
+const offerteAChi = el.querySelector('.c-offerte-achi').value;
+const ricordini = el.querySelector('.c-ricordini').value;
 
         let dateFormattata = formattaDataIta(date);
         
@@ -1086,6 +1092,8 @@
         str += `Data Funerale: ${dateFormattata}\n`;
         str += `Ora Funerale: ${time || 'Non specificata'}\n`;
         str += `Squadra Operativa: ${team || 'Non specificata'}\n`;
+        str += `Offerte: ${offerte || 'Non specificato'} ${offerte === 'SI' ? '- A chi: ' + (offerteAChi || 'Non specificato') : ''}\n`;
+str += `Ricordini: ${ricordini || 'Non specificato'}\n`;
 
         triggerDownload(str, `Dati_Cerimonia_${name.replace(/\s+/g, '_')}.txt`);
     }
@@ -1131,10 +1139,27 @@
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <div class="form-group"><label>Data Decesso</label><input type="date" class="c-death" value="${data.deathDetails || ''}" oninput="debounceSaveCeremony('${data.id}')"></div>
                     <div class="form-group"><label>Data Funerale</label><input type="date" class="c-funeral" value="${data.funeralDate || ''}" oninput="debounceSaveCeremony('${data.id}')"></div>
-                    <div class="form-group"><label>Ora Funerale</label><input type="time" step="900" class="c-funeral-time" value="${data.funeralTime || ''}" oninput="debounceSaveCeremony('${data.id}')"></div>
-                    <div class="form-group"><label>Squadra</label><input type="text" class="c-team" value="${data.team || ''}" oninput="debounceSaveCeremony('${data.id}')" placeholder="Nomi..."></div>
+<div class="form-group"><label>Ora Funerale</label><input type="text" class="c-funeral-time" value="${data.funeralTime || ''}" oninput="debounceSaveCeremony('${data.id}')" placeholder="Es. 15:30"></div>                    <div class="form-group"><label>Squadra</label><input type="text" class="c-team" value="${data.team || ''}" oninput="debounceSaveCeremony('${data.id}')" placeholder="Nomi..."></div>
                 </div>
-                
+                <div style="display:grid; grid-template-columns: 1fr 2fr 1fr; gap:10px; margin-top:10px; background:#fff3e0; padding:10px; border-radius:6px;">
+    <div class="form-group">
+        <label>Offerte?</label>
+        <select class="c-offerte" onchange="debounceSaveCeremony('${data.id}')">
+            <option value="" ${data.offerte === '' ? 'selected' : ''}>-</option>
+            <option value="SI" ${data.offerte === 'SI' ? 'selected' : ''}>SI</option>
+            <option value="NO" ${data.offerte === 'NO' ? 'selected' : ''}>NO</option>
+        </select>
+    </div>
+    <div class="form-group"><label>A chi?</label><input type="text" class="c-offerte-achi" value="${data.offerteAChi || ''}" oninput="debounceSaveCeremony('${data.id}')" placeholder="Es. AIRC, Parrocchia..."></div>
+    <div class="form-group">
+        <label>Ricordini?</label>
+        <select class="c-ricordini" onchange="debounceSaveCeremony('${data.id}')">
+            <option value="" ${data.ricordini === '' ? 'selected' : ''}>-</option>
+            <option value="SI" ${data.ricordini === 'SI' ? 'selected' : ''}>SI</option>
+            <option value="NO" ${data.ricordini === 'NO' ? 'selected' : ''}>NO</option>
+        </select>
+    </div>
+</div>
                 <div class="form-group" style="margin-top:10px;">
                     <label>Mansioni Cerimonia</label>
                     <div class="c-tasks-list" style="background:var(--card); border:1px solid #ddd; border-radius:4px; padding:5px;">${tasksHtml}</div>
@@ -1356,7 +1381,7 @@
             Object.values(data.ceremonies).forEach(c => {
                 let funDate = c.funeralDate ? formattaDataIta(c.funeralDate) : "ND";
                 let decDate = c.deathDetails ? formattaDataIta(c.deathDetails) : "ND";
-                let base = `> SALMA: ${c.name.toUpperCase()} (Dec: ${decDate}, Fun: ${funDate} ${c.funeralTime||""}, Sq: ${c.team||"ND"})`;
+               let base = `> SALMA: ${c.name.toUpperCase()} (Dec: ${decDate}, Fun: ${funDate} ${c.funeralTime||""}, Sq: ${c.team||"ND"}, Offerte: ${c.offerte||"NO"}, Ricordini: ${c.ricordini||"NO"})`;
                 let u_tasks = []; let c_tasks = [];
                 if(c.tasks) Object.values(c.tasks).forEach(ct => { ct.completed ? c_tasks.push(ct.text) : u_tasks.push(ct.text); });
                 if(u_tasks.length > 0) daFareArr.push(`[CERIMONIE] ${base}\n   Da svolgere: ${u_tasks.join(', ')}`);
