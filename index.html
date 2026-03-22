@@ -1054,21 +1054,21 @@
     }
 
     // --- SALME (Cerimonie) ---
-    function addCeremony() {
-        const id = "cer_" + Date.now() + Math.floor(Math.random() * 1000);
-        const defaultTasks = {};
-        const mansioniPredefinite = ["Medico", "Fioraio", "Vestizione", "Cassa", "Trasporto", "Chiesa", "Cimitero", "Necrologio Online", "Affissione", "Ricordini", "Estratto di Morte", "Passaporto Mortuario"];
-        
-        mansioniPredefinite.forEach(t => {
-            const tid = "ctask_" + Date.now() + Math.floor(Math.random() * 1000);
-            defaultTasks[tid] = { id: tid, text: t, completed: false };
-        });
-        
-        renderCeremonyItem({ id: id, name: "Nome Salma...", deathDetails: "", funeralDate: "", funeralTime: "", team: "", chiesa: "", cimitero: "", tasks: defaultTasks, isNew: true });
-        setTimeout(() => selectTextContent(document.querySelector(`#${id} .c-name`)), 50);
-        debounceSaveCeremony(id);
-    }
-
+  function addCeremony() {
+        const id = "cer_" + Date.now() + Math.floor(Math.random() * 1000);
+        const defaultTasks = {};
+        const mansioniPredefinite = ["Rinomina Mansione...", "Rinomina Mansione...", "Rinomina Mansione...", "Rinomina Mansione..."];
+        
+        mansioniPredefinite.forEach(t => {
+            const tid = "ctask_" + Date.now() + Math.floor(Math.random() * 1000);
+            defaultTasks[tid] = { id: tid, text: t, completed: false };
+        });
+        
+        renderCeremonyItem({ id: id, name: "Nome Salma...", deathDetails: "", funeralDate: "", funeralTime: "", team: "", chiesa: "", cimitero: "", tasks: defaultTasks, isNew: true });
+        setTimeout(() => selectTextContent(document.querySelector(`#${id} .c-name`)), 50);
+        debounceSaveCeremony(id);
+    }
+    
     function printCeremony(id) {
         const el = document.getElementById(id);
         if(!el) return;
